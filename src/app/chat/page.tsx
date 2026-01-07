@@ -275,61 +275,30 @@ function ChatPageContent() {
     }
 
     return (
-        <div className="h-screen flex overflow-hidden">
-            {/* Sidebar */}
-            <Sidebar
-                isOpen={sidebarOpen}
-                onToggle={() => setSidebarOpen(!sidebarOpen)}
-                currentRepoName={repoContext ? `${repoContext.owner}/${repoContext.repo}` : undefined}
-            />
+        <div className="flex-1 flex flex-col min-h-0">
+            {/* Header */}
+            <header className="flex-shrink-0 w-full px-6 py-4 flex items-center">
+                <span className="text-sm font-medium">
+                    {repoContext?.owner}/{repoContext?.repo}
+                </span>
+            </header>
 
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0">
-                {/* Header */}
-                <header className="flex-shrink-0 w-full px-6 py-4 flex items-center">
-                    <div className="flex items-center gap-3">
-                        {/* Toggle button - visible on mobile, and on desktop when sidebar is closed */}
-                        {!sidebarOpen && (
-                            <button
-                                onClick={() => setSidebarOpen(true)}
-                                className="p-1 -ml-1 text-muted-foreground hover:text-foreground transition-colors"
-                                title="Open sidebar"
-                            >
-                                <PanelLeftOpen className="w-5 h-5" />
-                            </button>
-                        )}
-                        {/* Legacy mobile menu toggle (only if for some reason we need it, but PanelLeftOpen is better) */}
-                        {sidebarOpen && (
-                            <button
-                                onClick={() => setSidebarOpen(true)}
-                                className="p-1 -ml-1 text-muted-foreground hover:text-foreground md:hidden"
-                            >
-                                <Menu className="w-5 h-5" />
-                            </button>
-                        )}
-                        <span className="text-sm font-medium">
-                            {repoContext?.owner}/{repoContext?.repo}
-                        </span>
-                    </div>
-                </header>
-
-                {/* Chat or Exploration */}
-                <div className="flex-1 flex flex-col min-h-0">
-                    <ChatInterface
-                        messages={messages}
-                        onSendMessage={handleSendMessage}
-                        isGenerating={isGenerating}
-                        isAnalyzing={isAnalyzing}
-                        analysisInfo={analysisInfo || undefined}
-                        showExploration={showExploration && !isAnalyzing && messages.length === 0}
-                        explorationProps={analysisInfo ? {
-                            owner: analysisInfo.owner,
-                            repo: analysisInfo.repo,
-                            onSelectPrompt: handleExplorationPrompt,
-                            onSwitchRepo: handleSwitchRepo,
-                        } : undefined}
-                    />
-                </div>
+            {/* Chat or Exploration */}
+            <div className="flex-1 flex flex-col min-h-0">
+                <ChatInterface
+                    messages={messages}
+                    onSendMessage={handleSendMessage}
+                    isGenerating={isGenerating}
+                    isAnalyzing={isAnalyzing}
+                    analysisInfo={analysisInfo || undefined}
+                    showExploration={showExploration && !isAnalyzing && messages.length === 0}
+                    explorationProps={analysisInfo ? {
+                        owner: analysisInfo.owner,
+                        repo: analysisInfo.repo,
+                        onSelectPrompt: handleExplorationPrompt,
+                        onSwitchRepo: handleSwitchRepo,
+                    } : undefined}
+                />
             </div>
         </div>
     );
