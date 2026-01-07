@@ -6,4 +6,4 @@ export const cencori = new Cencori({
 });
 
 // Model to use for README generation
-export const AI_MODEL = 'gemini-2.5-flash';
+export const AI_MODEL = 'llama-3.3-70b-versatile';

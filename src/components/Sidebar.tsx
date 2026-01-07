@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Plus, MessageSquare, User, LogIn, X, PanelLeftClose } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Plus, MessageSquare, User, LogIn, X, PanelLeftClose, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from './ThemeToggle';
 import { Logo } from './Logo';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
 
 interface ChatHistoryItem {
     id: string;
@@ -21,19 +23,80 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onToggle, currentRepoName }: SidebarProps) {
     const router = useRouter();
-    // Placeholder auth state - will be replaced with real auth later
-    const [isSignedIn] = useState(false);
+    const searchParams = useSearchParams();
+    const chatSessionId = searchParams.get('id');
+    const { user, isSignedIn, signInWithGitHub, signOut } = useAuth();
 
-    // Placeholder chat history - will be replaced with real data later
-    const [chatHistory] = useState<ChatHistoryItem[]>([
-        // Uncomment to test with placeholder data:
-        // { id: '1', repoName: 'user/repo-one', timestamp: new Date() },
-        // { id: '2', repoName: 'user/repo-two', timestamp: new Date(Date.now() - 86400000) },
-    ]);
+    const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+    useEffect(() => {
+        if (!user) {
+            setChatHistory([]);
+            return;
+        }
+
+        const fetchChatHistory = async () => {
+            setIsLoadingHistory(true);
+            try {
+                const { data, error } = await supabase
+                    .from('chats')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('updated_at', { ascending: false });
+
+                if (error) throw error;
+
+                if (data) {
+                    setChatHistory(data.map(chat => ({
+                        id: chat.id,
+                        repoName: chat.repo_name,
+                        repoUrl: chat.repo_url,
+                        timestamp: new Date(chat.created_at)
+                    })));
+                }
+            } catch (err) {
+                console.error('Error fetching chat history:', err);
+            } finally {
+                setIsLoadingHistory(false);
+            }
+        };
+
+        fetchChatHistory();
+    }, [user]);
 
     const handleNewChat = () => {
         router.push('/');
-        onToggle();
+        if (window.innerWidth < 768) onToggle();
+    };
+
+    const handleSelectChat = (chat: any) => {
+        const encodedUrl = encodeURIComponent(chat.repoUrl);
+        router.push(`/chat?repo=${encodedUrl}&id=${chat.id}`);
+        if (window.innerWidth < 768) onToggle();
+    };
+
+    const handleDeleteChat = async (e: React.MouseEvent, chatIdToDelete: string) => {
+        e.stopPropagation();
+        if (!confirm('Are you sure you want to delete this chat?')) return;
+
+        try {
+            const { error } = await supabase
+                .from('chats')
+                .delete()
+                .eq('id', chatIdToDelete);
+
+            if (error) throw error;
+
+            setChatHistory(prev => prev.filter(chat => chat.id !== chatIdToDelete));
+
+            // If the deleted chat is the current one, go back to home
+            if (chatSessionId === chatIdToDelete) {
+                router.push('/');
+            }
+        } catch (err) {
+            console.error('Error deleting chat:', err);
+        }
     };
 
     return (
@@ -95,19 +158,43 @@ export default function Sidebar({ isOpen, onToggle, currentRepoName }: SidebarPr
                 {/* Chat History */}
                 <div className="flex-1 overflow-y-auto px-3">
                     {isSignedIn ? (
-                        chatHistory.length > 0 ? (
+                        isLoadingHistory ? (
+                            <div className="px-4 py-6 text-xs text-muted-foreground/60 text-center animate-pulse">
+                                Loading history...
+                            </div>
+                        ) : chatHistory.length > 0 ? (
                             <div className="space-y-1">
                                 <span className="px-4 text-[10px] uppercase tracking-widest text-muted-foreground/60">
                                     Recent
                                 </span>
                                 {chatHistory.map((chat) => (
-                                    <button
-                                        key={chat.id}
-                                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm rounded-xl hover:bg-white/5 transition-colors text-left"
-                                    >
-                                        <MessageSquare className="w-4 h-4 text-muted-foreground/60 flex-shrink-0" />
-                                        <span className="truncate text-muted-foreground">{chat.repoName}</span>
-                                    </button>
+                                    <div key={chat.id} className="group flex items-center gap-1">
+                                        <button
+                                            onClick={() => handleSelectChat(chat)}
+                                            className={cn(
+                                                "flex-1 flex items-center gap-2.5 px-4 py-2.5 text-sm rounded-xl hover:bg-white/5 transition-colors text-left overflow-hidden",
+                                                chatSessionId === chat.id ? "bg-white/5 border border-white/5" : ""
+                                            )}
+                                        >
+                                            <MessageSquare className={cn(
+                                                "w-4 h-4 flex-shrink-0 transition-colors",
+                                                chatSessionId === chat.id ? "text-foreground" : "text-muted-foreground/60 group-hover:text-muted-foreground"
+                                            )} />
+                                            <span className={cn(
+                                                "truncate transition-colors",
+                                                chatSessionId === chat.id ? "text-foreground font-medium" : "text-muted-foreground/60 group-hover:text-muted-foreground"
+                                            )}>
+                                                {chat.repoName}
+                                            </span>
+                                        </button>
+                                        <button
+                                            onClick={(e) => handleDeleteChat(e, chat.id)}
+                                            className="p-2 opacity-0 group-hover:opacity-100 text-muted-foreground/60 hover:text-error transition-all"
+                                            title="Delete chat"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 ))}
                             </div>
                         ) : (
@@ -125,14 +212,21 @@ export default function Sidebar({ isOpen, onToggle, currentRepoName }: SidebarPr
                 {/* Auth Section */}
                 <div className="p-3 flex items-center gap-2">
                     {isSignedIn ? (
-                        <button className="flex-1 flex items-center gap-3 px-4 py-3 text-sm rounded-xl hover:bg-white/5 transition-colors overflow-hidden">
-                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                        <button
+                            onClick={() => signOut()}
+                            className="flex-1 flex items-center gap-3 px-4 py-3 text-sm rounded-xl hover:bg-white/5 transition-colors overflow-hidden group"
+                            title="Sign out"
+                        >
+                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-white/20 transition-colors">
                                 <User className="w-4 h-4" />
                             </div>
-                            <span className="truncate text-sm">user@example.com</span>
+                            <span className="truncate text-sm">{user?.email?.split('@')[0]}</span>
                         </button>
                     ) : (
-                        <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm rounded-xl bg-white/10 hover:bg-white/15 transition-colors border border-white/10">
+                        <button
+                            onClick={() => signInWithGitHub()}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm rounded-xl bg-white/10 hover:bg-white/15 transition-colors border border-white/10"
+                        >
                             <LogIn className="w-4 h-4" />
                             Sign in
                         </button>

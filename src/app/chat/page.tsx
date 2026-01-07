@@ -8,12 +8,17 @@ import { generateId } from '@/lib/utils';
 import { buildInitialMessage } from '@/lib/prompts';
 import ChatInterface from '@/components/ChatInterface';
 import Sidebar from '@/components/Sidebar';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
 
 function ChatPageContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const repoUrl = searchParams.get('repo');
+    const chatIdFromUrl = searchParams.get('id');
+    const { user, isSignedIn } = useAuth();
 
+    const [chatId, setChatId] = useState<string | null>(chatIdFromUrl);
     const [repoContext, setRepoContext] = useState<RepoContext | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isAnalyzing, setIsAnalyzing] = useState(true);
@@ -34,11 +39,34 @@ function ChatPageContent() {
                 // Parse owner/repo from URL to show progress immediately
                 const decodedUrl = decodeURIComponent(repoUrl);
                 const match = decodedUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
-                if (match) {
-                    setAnalysisInfo({
-                        owner: match[1],
-                        repo: match[2].replace(/\.git$/, ''),
-                    });
+                const owner = match ? match[1] : '';
+                const repo = match ? match[2].replace(/\.git$/, '') : '';
+
+                if (owner && repo) {
+                    setAnalysisInfo({ owner, repo });
+                }
+
+                // If loading an existing chat
+                if (chatIdFromUrl) {
+                    const { data: chatData, error: chatError } = await supabase
+                        .from('chats')
+                        .select('*, messages(*)')
+                        .eq('id', chatIdFromUrl)
+                        .single();
+
+                    if (!chatError && chatData) {
+                        const savedMessages: ChatMessage[] = chatData.messages
+                            .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                            .map((m: any) => ({
+                                id: m.id,
+                                role: m.role,
+                                content: m.content,
+                                timestamp: new Date(m.created_at)
+                            }));
+
+                        setMessages(savedMessages);
+                        setChatId(chatIdFromUrl);
+                    }
                 }
 
                 const response = await fetch('/api/analyze', {
@@ -66,26 +94,31 @@ function ChatPageContent() {
                     hasPackageJson: !!data.data.packageJson,
                 });
 
-                const initialMessage: ChatMessage = {
-                    id: generateId(),
-                    role: 'assistant',
-                    content: buildInitialMessage(data.data),
-                    timestamp: new Date(),
-                };
+                // Only perform initial setup if it's a new chat
+                if (!chatIdFromUrl) {
+                    const initialAssistantMessage: ChatMessage = {
+                        id: generateId(),
+                        role: 'assistant',
+                        content: buildInitialMessage(data.data),
+                        timestamp: new Date(),
+                    };
 
-                const userMessage: ChatMessage = {
-                    id: generateId(),
-                    role: 'user',
-                    content: 'Generate a README for this repository.',
-                    timestamp: new Date(),
-                };
+                    const firstUserMessage: ChatMessage = {
+                        id: generateId(),
+                        role: 'user',
+                        content: 'Generate a README for this repository.',
+                        timestamp: new Date(),
+                    };
 
-                const initialMessages = [initialMessage, userMessage];
-                setMessages(initialMessages);
-                setIsAnalyzing(false);
+                    const initialMessages = [initialAssistantMessage, firstUserMessage];
+                    setMessages(initialMessages);
+                    setIsAnalyzing(false);
 
-                // Send initial message to AI
-                sendMessageToAI(data.data, initialMessages);
+                    // Send initial message to AI
+                    sendMessageToAI(data.data, initialMessages);
+                } else {
+                    setIsAnalyzing(false);
+                }
             } catch (err) {
                 console.error('Analysis error:', err);
                 setError('Failed to connect to the server');
@@ -94,7 +127,7 @@ function ChatPageContent() {
         };
 
         analyzeRepo();
-    }, [repoUrl, router]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [repoUrl, chatIdFromUrl, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const sendMessageToAI = useCallback(async (
         context: RepoContext,
@@ -103,6 +136,49 @@ function ChatPageContent() {
         setIsGenerating(true);
 
         try {
+            // If user is signed in and we don't have a chatId, create a new chat
+            let currentChatId = chatId;
+            if (isSignedIn && user && !currentChatId) {
+                const { data: newChat, error: chatError } = await supabase
+                    .from('chats')
+                    .insert({
+                        user_id: user.id,
+                        repo_name: `${context.owner}/${context.repo}`,
+                        repo_url: repoUrl
+                    })
+                    .select()
+                    .single();
+
+                if (!chatError && newChat) {
+                    currentChatId = newChat.id;
+                    setChatId(newChat.id);
+                    // Update URL with chatId without refreshing the page
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('id', newChat.id);
+                    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+
+                    // Save initial assistant message and first user message
+                    const messagesToSave = existingMessages.map(m => ({
+                        chat_id: newChat.id,
+                        role: m.role,
+                        content: m.content,
+                        created_at: new Date().toISOString()
+                    }));
+                    await supabase.from('messages').insert(messagesToSave);
+                }
+            } else if (isSignedIn && currentChatId) {
+                // Save only the latest user message if chat already existed
+                const lastUserMessage = existingMessages[existingMessages.length - 1];
+                if (lastUserMessage.role === 'user') {
+                    await supabase.from('messages').insert({
+                        chat_id: currentChatId,
+                        role: 'user',
+                        content: lastUserMessage.content,
+                        created_at: new Date().toISOString()
+                    });
+                }
+            }
+
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -148,13 +224,29 @@ function ChatPageContent() {
                 );
             }
 
+            // Save assistant message to Supabase
+            if (isSignedIn && currentChatId) {
+                await supabase.from('messages').insert({
+                    chat_id: currentChatId,
+                    role: 'assistant',
+                    content: fullContent,
+                    created_at: new Date().toISOString()
+                });
+
+                // Update updated_at for chat
+                await supabase
+                    .from('chats')
+                    .update({ updated_at: new Date().toISOString() })
+                    .eq('id', currentChatId);
+            }
+
             setIsGenerating(false);
         } catch (err) {
             console.error('Chat error:', err);
             setError('Failed to get response. Please try again.');
             setIsGenerating(false);
         }
-    }, []);
+    }, [chatId, isSignedIn, user, repoUrl]);
 
     const handleSendMessage = async (content: string) => {
         if (!repoContext || isGenerating) return;
