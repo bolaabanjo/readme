@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { FileText, ArrowLeft, Copy, Check, Loader2 } from 'lucide-react';
-import type { RepoContext, ChatMessage, ReadmeStyle } from '@/types';
-import { generateId, copyToClipboard } from '@/lib/utils';
+import { Loader2, Menu, PanelLeftOpen } from 'lucide-react';
+import type { RepoContext, ChatMessage } from '@/types';
+import { generateId } from '@/lib/utils';
 import { buildInitialMessage } from '@/lib/prompts';
 import ChatInterface from '@/components/ChatInterface';
-import ReadmePreview from '@/components/ReadmePreview';
+import Sidebar from '@/components/Sidebar';
 
 function ChatPageContent() {
     const searchParams = useSearchParams();
@@ -19,11 +19,8 @@ function ChatPageContent() {
     const [isAnalyzing, setIsAnalyzing] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState('');
-    const [style, setStyle] = useState<ReadmeStyle>('professional');
-    const [currentReadme, setCurrentReadme] = useState('');
-    const [copied, setCopied] = useState(false);
-    const [activeTab, setActiveTab] = useState<'chat' | 'preview'>('chat');
     const [analysisInfo, setAnalysisInfo] = useState<{ owner: string; repo: string; fileCount?: number; keyFiles?: string[]; hasPackageJson?: boolean } | null>(null);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
 
     // Analyze repo on mount
     useEffect(() => {
@@ -87,7 +84,8 @@ function ChatPageContent() {
                 setMessages(initialMessages);
                 setIsAnalyzing(false);
 
-                generateReadme(data.data, initialMessages, style);
+                // Send initial message to AI
+                sendMessageToAI(data.data, initialMessages);
             } catch (err) {
                 console.error('Analysis error:', err);
                 setError('Failed to connect to the server');
@@ -98,13 +96,11 @@ function ChatPageContent() {
         analyzeRepo();
     }, [repoUrl, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const generateReadme = useCallback(async (
+    const sendMessageToAI = useCallback(async (
         context: RepoContext,
-        existingMessages: ChatMessage[],
-        selectedStyle: ReadmeStyle
+        existingMessages: ChatMessage[]
     ) => {
         setIsGenerating(true);
-        setActiveTab('chat');
 
         try {
             const response = await fetch('/api/chat', {
@@ -113,12 +109,12 @@ function ChatPageContent() {
                 body: JSON.stringify({
                     messages: existingMessages.filter(m => m.role === 'user'),
                     repoContext: context,
-                    style: selectedStyle,
+                    style: 'professional',
                 }),
             });
 
             if (!response.ok) {
-                throw new Error('Failed to generate README');
+                throw new Error('Failed to get response');
             }
 
             const reader = response.body?.getReader();
@@ -150,23 +146,12 @@ function ChatPageContent() {
                             : m
                     )
                 );
-
-                const readmeMatch = fullContent.match(/```markdown\n([\s\S]*?)```/);
-                if (readmeMatch) {
-                    setCurrentReadme(readmeMatch[1]);
-                } else {
-                    const altMatch = fullContent.match(/```\n([\s\S]*?)```/);
-                    if (altMatch) {
-                        setCurrentReadme(altMatch[1]);
-                    }
-                }
             }
 
             setIsGenerating(false);
-            setActiveTab('preview');
         } catch (err) {
-            console.error('Generation error:', err);
-            setError('Failed to generate README. Please try again.');
+            console.error('Chat error:', err);
+            setError('Failed to get response. Please try again.');
             setIsGenerating(false);
         }
     }, []);
@@ -184,26 +169,8 @@ function ChatPageContent() {
         const newMessages = [...messages, userMessage];
         setMessages(newMessages);
 
-        await generateReadme(repoContext, newMessages, style);
+        await sendMessageToAI(repoContext, newMessages);
     };
-
-    const handleStyleChange = (newStyle: ReadmeStyle) => {
-        setStyle(newStyle);
-        if (repoContext && messages.length > 0) {
-            generateReadme(repoContext, messages, newStyle);
-        }
-    };
-
-    const handleCopy = async () => {
-        if (!currentReadme) return;
-        const success = await copyToClipboard(currentReadme);
-        if (success) {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        }
-    };
-
-
 
     if (error && !repoContext) {
         return (
@@ -213,83 +180,53 @@ function ChatPageContent() {
                     onClick={() => router.push('/')}
                     className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                    <ArrowLeft className="w-3 h-3" />
-                    Try another repository
+                    ← Try another repository
                 </button>
             </div>
         );
     }
 
     return (
-        <div className="h-screen flex flex-col overflow-hidden">
-            {/* Header */}
-            <header className="flex-shrink-0 w-full px-4 sm:px-6 py-3 flex items-center justify-between border-b border-border/50 bg-background">
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => router.push('/')}
-                        className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        <FileText className="w-4 h-4" />
-                        <span className="hidden sm:inline text-sm font-medium">README.wtf</span>
-                    </button>
-                    <span className="text-border">/</span>
-                    <span className="text-sm font-medium truncate max-w-[180px] sm:max-w-none">
-                        {repoContext?.owner}/{repoContext?.repo}
-                    </span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={handleCopy}
-                        disabled={!currentReadme}
-                        className="flex items-center gap-1.5 h-8 px-3 text-xs rounded-full border border-border/50 hover:border-border transition-colors disabled:opacity-50"
-                    >
-                        {copied ? (
-                            <>
-                                <Check className="w-3 h-3 text-success" />
-                                Copied
-                            </>
-                        ) : (
-                            <>
-                                <Copy className="w-3 h-3" />
-                                Copy
-                            </>
+        <div className="h-screen flex overflow-hidden">
+            {/* Sidebar */}
+            <Sidebar
+                isOpen={sidebarOpen}
+                onToggle={() => setSidebarOpen(!sidebarOpen)}
+                currentRepoName={repoContext ? `${repoContext.owner}/${repoContext.repo}` : undefined}
+            />
+
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col min-w-0">
+                {/* Header */}
+                <header className="flex-shrink-0 w-full px-6 py-4 flex items-center">
+                    <div className="flex items-center gap-3">
+                        {/* Toggle button - visible on mobile, and on desktop when sidebar is closed */}
+                        {!sidebarOpen && (
+                            <button
+                                onClick={() => setSidebarOpen(true)}
+                                className="p-1 -ml-1 text-muted-foreground hover:text-foreground transition-colors"
+                                title="Open sidebar"
+                            >
+                                <PanelLeftOpen className="w-5 h-5" />
+                            </button>
                         )}
-                    </button>
-                    <button
-                        onClick={() => router.push('/')}
-                        className="h-8 px-3 text-xs font-medium bg-foreground text-background rounded-full hover:opacity-90 transition-opacity"
-                    >
-                        New
-                    </button>
-                </div>
-            </header>
+                        {/* Legacy mobile menu toggle (only if for some reason we need it, but PanelLeftOpen is better) */}
+                        {sidebarOpen && (
+                            <button
+                                onClick={() => setSidebarOpen(true)}
+                                className="p-1 -ml-1 text-muted-foreground hover:text-foreground md:hidden"
+                            >
+                                <Menu className="w-5 h-5" />
+                            </button>
+                        )}
+                        <span className="text-sm font-medium">
+                            {repoContext?.owner}/{repoContext?.repo}
+                        </span>
+                    </div>
+                </header>
 
-            {/* Mobile Tabs */}
-            <div className="md:hidden flex-shrink-0 flex border-b border-border/50 bg-background">
-                <button
-                    onClick={() => setActiveTab('chat')}
-                    className={`flex-1 py-2.5 text-xs font-medium transition-colors ${activeTab === 'chat'
-                        ? 'text-foreground border-b border-foreground'
-                        : 'text-muted-foreground'
-                        }`}
-                >
-                    Chat
-                </button>
-                <button
-                    onClick={() => setActiveTab('preview')}
-                    className={`flex-1 py-2.5 text-xs font-medium transition-colors ${activeTab === 'preview'
-                        ? 'text-foreground border-b border-foreground'
-                        : 'text-muted-foreground'
-                        }`}
-                >
-                    Preview
-                </button>
-            </div>
-
-            {/* Main */}
-            <div className="flex-1 flex flex-col md:flex-row min-h-0">
                 {/* Chat */}
-                <div className={`flex-1 flex flex-col min-h-0 border-r border-border/50 ${activeTab === 'chat' ? 'flex' : 'hidden md:flex'}`}>
+                <div className="flex-1 flex flex-col min-h-0">
                     <ChatInterface
                         messages={messages}
                         onSendMessage={handleSendMessage}
@@ -297,11 +234,6 @@ function ChatPageContent() {
                         isAnalyzing={isAnalyzing}
                         analysisInfo={analysisInfo || undefined}
                     />
-                </div>
-
-                {/* Preview */}
-                <div className={`flex-1 flex flex-col ${activeTab === 'preview' ? 'flex' : 'hidden md:flex'}`}>
-                    <ReadmePreview content={currentReadme} isLoading={isGenerating && !currentReadme} />
                 </div>
             </div>
         </div>

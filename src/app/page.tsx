@@ -129,7 +129,7 @@ export default function Home() {
       <footer className="w-full px-6 py-4 border-t border-border/50">
         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
           <span>README.wtf</span>
-          <span>Free · Built on Cencori</span>
+          <span>Free · Built on <a href="https://cencori.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">Cencori</a></span>
         </div>
       </footer>
     </div>

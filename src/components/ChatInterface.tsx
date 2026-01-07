@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ArrowUp } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import type { ChatMessage } from '@/types';
 import { cn } from '@/lib/utils';
 import AnalysisProgress from './AnalysisProgress';
@@ -51,70 +52,95 @@ export default function ChatInterface({
 
     return (
         <div className="flex flex-col h-full min-h-0">
-            {/* Scrollable Messages Area - takes remaining space */}
-            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 space-y-4 min-h-0">
-                {/* Show analysis progress - persists after completion */}
-                {analysisInfo && (
-                    <AnalysisProgress
-                        repoOwner={analysisInfo.owner}
-                        repoName={analysisInfo.repo}
-                        isComplete={!isAnalyzing}
-                        fileCount={analysisInfo.fileCount}
-                        keyFiles={analysisInfo.keyFiles}
-                        hasPackageJson={analysisInfo.hasPackageJson}
-                    />
-                )}
+            {/* Scrollable Messages Area */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+                <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+                    {/* Analysis progress */}
+                    {analysisInfo && (
+                        <AnalysisProgress
+                            repoOwner={analysisInfo.owner}
+                            repoName={analysisInfo.repo}
+                            isComplete={!isAnalyzing}
+                            fileCount={analysisInfo.fileCount}
+                            keyFiles={analysisInfo.keyFiles}
+                            hasPackageJson={analysisInfo.hasPackageJson}
+                        />
+                    )}
 
-                {/* Show messages */}
-                {messages.map((message) => (
-                    <div
-                        key={message.id}
-                        className={cn(
-                            'flex animate-fade-in',
-                            message.role === 'user' ? 'justify-end' : 'justify-start'
-                        )}
-                    >
+                    {/* Messages */}
+                    {messages.map((message) => (
                         <div
+                            key={message.id}
                             className={cn(
-                                'max-w-[85%] px-4 py-2 text-sm rounded-2xl',
-                                message.role === 'user'
-                                    ? 'bg-white text-black shadow-sm'
-                                    : 'bg-white/5 text-foreground border border-white/10'
+                                'animate-fade-in',
+                                message.role === 'user' ? 'flex justify-end' : ''
                             )}
                         >
-                            <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
-                            {message.role === 'assistant' && isGenerating && message === messages[messages.length - 1] && (
-                                <span className="cursor-blink ml-1" />
+                            {message.role === 'user' ? (
+                                <div className="inline-block px-4 py-2.5 text-sm rounded-2xl bg-white/10 border border-white/10">
+                                    {message.content}
+                                </div>
+                            ) : (
+                                <div className="text-sm text-foreground leading-relaxed">
+                                    <ReactMarkdown
+                                        components={{
+                                            h1: ({ children }) => <h1 className="text-base font-semibold mb-4 mt-6 first:mt-0">{children}</h1>,
+                                            h2: ({ children }) => <h2 className="text-sm font-semibold mt-6 mb-3">{children}</h2>,
+                                            h3: ({ children }) => <h3 className="text-sm font-medium mt-4 mb-2">{children}</h3>,
+                                            p: ({ children }) => <p className="mb-4 leading-relaxed">{children}</p>,
+                                            ul: ({ children }) => <ul className="list-disc list-outside ml-5 mb-4 space-y-1.5">{children}</ul>,
+                                            ol: ({ children }) => <ol className="list-decimal list-outside ml-5 mb-4 space-y-1.5">{children}</ol>,
+                                            li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                                            code: ({ className, children }) => {
+                                                const isInline = !className;
+                                                return isInline ? (
+                                                    <code className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-xs">{children}</code>
+                                                ) : (
+                                                    <code className={cn("block p-4 rounded-lg bg-white/5 font-mono text-xs overflow-x-auto", className)}>{children}</code>
+                                                );
+                                            },
+                                            pre: ({ children }) => <pre className="mb-4">{children}</pre>,
+                                            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                                        }}
+                                    >
+                                        {message.content}
+                                    </ReactMarkdown>
+                                    {isGenerating && message === messages[messages.length - 1] && (
+                                        <span className="inline-block w-2 h-4 bg-foreground/50 animate-pulse ml-0.5" />
+                                    )}
+                                </div>
                             )}
                         </div>
-                    </div>
-                ))}
-                <div ref={messagesEndRef} />
+                    ))}
+                    <div ref={messagesEndRef} />
+                </div>
             </div>
 
-            {/* Fixed Input at Bottom - never shrinks */}
-            <div className="flex-shrink-0 p-4 bg-background border-t border-border/50">
-                <form onSubmit={handleSubmit} className="max-w-3xl mx-auto w-full">
-                    <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 p-1.5 pl-6 pr-2 shadow-lg backdrop-blur-sm">
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Ask about the codebase..."
-                            disabled={isGenerating || isAnalyzing}
-                            className="flex-1 bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:opacity-50 h-[44px]"
-                        />
-                        <button
-                            type="submit"
-                            disabled={!input.trim() || isGenerating || isAnalyzing}
-                            className="flex-shrink-0 h-10 w-10 flex items-center justify-center bg-white text-black rounded-full hover:opacity-90 transition-opacity disabled:opacity-50"
-                        >
-                            <ArrowUp className="w-5 h-5" />
-                        </button>
-                    </div>
-                </form>
+            {/* Input Area */}
+            <div className="flex-shrink-0 px-6 pb-6 pt-4">
+                <div className="max-w-4xl mx-auto">
+                    <form onSubmit={handleSubmit}>
+                        <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2">
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Ask about the codebase..."
+                                disabled={isGenerating || isAnalyzing}
+                                className="flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground disabled:opacity-50"
+                            />
+                            <button
+                                type="submit"
+                                disabled={!input.trim() || isGenerating || isAnalyzing}
+                                className="flex-shrink-0 h-9 w-9 flex items-center justify-center bg-white text-black rounded-full hover:opacity-90 transition-opacity disabled:opacity-30"
+                            >
+                                <ArrowUp className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     );
