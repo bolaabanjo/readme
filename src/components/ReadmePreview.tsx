@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { FileText, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 interface ReadmePreviewProps {
     content: string;
@@ -14,32 +14,26 @@ interface ReadmePreviewProps {
 export default function ReadmePreview({ content, isLoading }: ReadmePreviewProps) {
     if (isLoading) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
-                <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                <p className="text-muted-foreground">Generating your README...</p>
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">Generating README...</p>
             </div>
         );
     }
 
     if (!content) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
-                    <FileText className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <div className="space-y-2">
-                    <h3 className="text-lg font-medium">README Preview</h3>
-                    <p className="text-muted-foreground text-sm max-w-xs">
-                        Your generated README will appear here. Start a conversation to create one.
-                    </p>
-                </div>
+            <div className="flex-1 flex flex-col items-center justify-center p-8">
+                <p className="text-xs text-muted-foreground">
+                    README preview will appear here.
+                </p>
             </div>
         );
     }
 
     return (
         <div className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-3xl mx-auto markdown-content">
+            <div className="max-w-2xl mx-auto markdown-content">
                 <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
@@ -63,7 +57,7 @@ export default function ReadmePreview({ content, isLoading }: ReadmePreviewProps
                                     customStyle={{
                                         margin: 0,
                                         borderRadius: '8px',
-                                        fontSize: '0.875rem',
+                                        fontSize: '0.8125rem',
                                     }}
                                 >
                                     {String(children).replace(/\n$/, '')}
