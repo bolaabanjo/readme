@@ -2,6 +2,9 @@ import { cencori, AI_MODEL } from '@/lib/cencori';
 import { buildSystemPrompt } from '@/lib/prompts';
 import type { ChatRequest } from '@/types';
 
+// Use Edge runtime for streaming support in production
+export const runtime = 'edge';
+
 export async function POST(request: Request) {
     try {
         const body: ChatRequest = await request.json();
@@ -61,11 +64,13 @@ export async function POST(request: Request) {
             },
         });
 
-        // Return the stream
+        // Return the stream with headers for production streaming
         return new Response(readableStream, {
             headers: {
                 'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
+                'Cache-Control': 'no-cache, no-transform',
+                'Connection': 'keep-alive',
+                'X-Accel-Buffering': 'no',
             },
         });
     } catch (error) {
