@@ -150,7 +150,6 @@ export default function Sidebar({ isOpen, onToggle, currentRepoName }: SidebarPr
                 {currentRepoName && (
                     <div className="px-3 pb-2">
                         <div className="flex items-center gap-2.5 px-4 py-2.5 text-sm rounded-xl bg-white/5">
-                            <MessageSquare className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                             <span className="truncate text-sm">{currentRepoName}</span>
                         </div>
                     </div>
@@ -177,10 +176,6 @@ export default function Sidebar({ isOpen, onToggle, currentRepoName }: SidebarPr
                                                 chatSessionId === chat.id ? "bg-white/5 border border-white/5" : ""
                                             )}
                                         >
-                                            <MessageSquare className={cn(
-                                                "w-4 h-4 flex-shrink-0 transition-colors",
-                                                chatSessionId === chat.id ? "text-foreground" : "text-muted-foreground/60 group-hover:text-muted-foreground"
-                                            )} />
                                             <span className={cn(
                                                 "truncate transition-colors",
                                                 chatSessionId === chat.id ? "text-foreground font-medium" : "text-muted-foreground/60 group-hover:text-muted-foreground"
