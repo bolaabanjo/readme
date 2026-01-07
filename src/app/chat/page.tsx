@@ -221,9 +221,9 @@ function ChatPageContent() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col">
+        <div className="h-screen flex flex-col overflow-hidden">
             {/* Header */}
-            <header className="w-full px-4 sm:px-6 py-3 flex items-center justify-between border-b border-border/50 sticky top-0 z-50 bg-background">
+            <header className="flex-shrink-0 w-full px-4 sm:px-6 py-3 flex items-center justify-between border-b border-border/50 bg-background">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => router.push('/')}
@@ -264,8 +264,8 @@ function ChatPageContent() {
                 </div>
             </header>
 
-            {/* Mobile Tabs - Sticky below header */}
-            <div className="md:hidden flex border-b border-border/50 sticky top-[52px] z-40 bg-background">
+            {/* Mobile Tabs */}
+            <div className="md:hidden flex-shrink-0 flex border-b border-border/50 bg-background">
                 <button
                     onClick={() => setActiveTab('chat')}
                     className={`flex-1 py-2.5 text-xs font-medium transition-colors ${activeTab === 'chat'
