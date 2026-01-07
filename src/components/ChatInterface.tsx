@@ -1,12 +1,25 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { ArrowUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { ChatMessage } from '@/types';
 import { cn } from '@/lib/utils';
 import AnalysisProgress from './AnalysisProgress';
 import ExplorationUI from './ExplorationUI';
+
+const THINKING_PHRASES = [
+    'Cooking...',
+    'In the kitchen...',
+    'Brewing something...',
+    'Thinking...',
+    'Reading the code...',
+    'Analyzing...',
+    'On it...',
+    'Working on it...',
+    'Let me think...',
+    'Processing...',
+];
 
 interface ChatInterfaceProps {
     messages: ChatMessage[];
@@ -42,9 +55,14 @@ export default function ChatInterface({
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
+    // Random thinking phrase that stays consistent during one generation cycle
+    const thinkingPhrase = useMemo(() => {
+        return THINKING_PHRASES[Math.floor(Math.random() * THINKING_PHRASES.length)];
+    }, [isGenerating]); // eslint-disable-line react-hooks/exhaustive-deps
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isAnalyzing]);
+    }, [messages, isAnalyzing, isGenerating]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -127,6 +145,17 @@ export default function ChatInterface({
                             )}
                         </div>
                     ))}
+
+                    {/* Thinking indicator - show when generating but no assistant message yet */}
+                    {isGenerating && (messages.length === 0 || messages[messages.length - 1]?.role === 'user') && (
+                        <div className="animate-fade-in">
+                            <div className="text-sm text-muted-foreground italic flex items-center gap-2">
+                                <span className="inline-block w-2 h-2 rounded-full bg-foreground/30 animate-pulse" />
+                                {thinkingPhrase}
+                            </div>
+                        </div>
+                    )}
+
                     <div ref={messagesEndRef} />
                 </div>
             </div>
