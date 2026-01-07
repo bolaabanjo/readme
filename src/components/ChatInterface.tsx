@@ -1,25 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ArrowUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { ChatMessage } from '@/types';
 import { cn } from '@/lib/utils';
 import AnalysisProgress from './AnalysisProgress';
 import ExplorationUI from './ExplorationUI';
-
-const THINKING_PHRASES = [
-    'Cooking...',
-    'In the kitchen...',
-    'Brewing something...',
-    'Thinking...',
-    'Reading the code...',
-    'Analyzing...',
-    'On it...',
-    'Working on it...',
-    'Let me think...',
-    'Processing...',
-];
+import ThinkingProgress from './ThinkingProgress';
 
 interface ChatInterfaceProps {
     messages: ChatMessage[];
@@ -54,11 +42,6 @@ export default function ChatInterface({
     const [input, setInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-
-    // Random thinking phrase that stays consistent during one generation cycle
-    const thinkingPhrase = useMemo(() => {
-        return THINKING_PHRASES[Math.floor(Math.random() * THINKING_PHRASES.length)];
-    }, [isGenerating]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -101,59 +84,75 @@ export default function ChatInterface({
                     )}
 
                     {/* Messages */}
-                    {messages.map((message) => (
-                        <div
-                            key={message.id}
-                            className={cn(
-                                'animate-fade-in',
-                                message.role === 'user' ? 'flex justify-end' : ''
-                            )}
-                        >
-                            {message.role === 'user' ? (
-                                <div className="inline-block px-4 py-2.5 text-sm rounded-2xl bg-muted border border-border">
-                                    {message.content}
-                                </div>
-                            ) : (
-                                <div className="text-sm text-foreground leading-relaxed">
-                                    <ReactMarkdown
-                                        components={{
-                                            h1: ({ children }) => <h1 className="text-base font-semibold mb-4 mt-6 first:mt-0">{children}</h1>,
-                                            h2: ({ children }) => <h2 className="text-sm font-semibold mt-6 mb-3">{children}</h2>,
-                                            h3: ({ children }) => <h3 className="text-sm font-medium mt-4 mb-2">{children}</h3>,
-                                            p: ({ children }) => <p className="mb-4 leading-relaxed">{children}</p>,
-                                            ul: ({ children }) => <ul className="list-disc list-outside ml-5 mb-4 space-y-1.5">{children}</ul>,
-                                            ol: ({ children }) => <ol className="list-decimal list-outside ml-5 mb-4 space-y-1.5">{children}</ol>,
-                                            li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-                                            code: ({ className, children }) => {
-                                                const isInline = !className;
-                                                return isInline ? (
-                                                    <code className="px-1.5 py-0.5 rounded bg-muted font-mono text-xs">{children}</code>
-                                                ) : (
-                                                    <code className={cn("block p-4 rounded-lg bg-muted/50 font-mono text-xs overflow-x-auto border border-border/50", className)}>{children}</code>
-                                                );
-                                            },
-                                            pre: ({ children }) => <pre className="mb-4">{children}</pre>,
-                                            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                                        }}
-                                    >
-                                        {message.content}
-                                    </ReactMarkdown>
-                                    {isGenerating && message === messages[messages.length - 1] && (
-                                        <span className="inline-block w-2 h-4 bg-foreground/50 animate-pulse ml-0.5" />
+                    {messages.map((message, index) => {
+                        // Find the previous user message for this assistant response
+                        const previousUserMessage = message.role === 'assistant'
+                            ? messages.slice(0, index).reverse().find(m => m.role === 'user')
+                            : null;
+
+                        const isLastMessage = index === messages.length - 1;
+                        const isThisMessageGenerating = isGenerating && isLastMessage && message.role === 'assistant';
+
+                        return (
+                            <div key={message.id}>
+                                {/* Show ThinkingProgress before each assistant message */}
+                                {message.role === 'assistant' && previousUserMessage && (
+                                    <div className="mb-4">
+                                        <ThinkingProgress
+                                            userPrompt={previousUserMessage.content}
+                                            isComplete={!isThisMessageGenerating || message.content.length > 0}
+                                        />
+                                    </div>
+                                )}
+
+                                <div className={cn(
+                                    'animate-fade-in',
+                                    message.role === 'user' ? 'flex justify-end' : ''
+                                )}>
+                                    {message.role === 'user' ? (
+                                        <div className="inline-block px-4 py-2.5 text-sm rounded-2xl bg-muted border border-border">
+                                            {message.content}
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-foreground leading-relaxed">
+                                            <ReactMarkdown
+                                                components={{
+                                                    h1: ({ children }) => <h1 className="text-base font-semibold mb-4 mt-6 first:mt-0">{children}</h1>,
+                                                    h2: ({ children }) => <h2 className="text-sm font-semibold mt-6 mb-3">{children}</h2>,
+                                                    h3: ({ children }) => <h3 className="text-sm font-medium mt-4 mb-2">{children}</h3>,
+                                                    p: ({ children }) => <p className="mb-4 leading-relaxed">{children}</p>,
+                                                    ul: ({ children }) => <ul className="list-disc list-outside ml-5 mb-4 space-y-1.5">{children}</ul>,
+                                                    ol: ({ children }) => <ol className="list-decimal list-outside ml-5 mb-4 space-y-1.5">{children}</ol>,
+                                                    li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                                                    code: ({ className, children }) => {
+                                                        const isInline = !className;
+                                                        return isInline ? (
+                                                            <code className="px-1.5 py-0.5 rounded bg-muted font-mono text-xs">{children}</code>
+                                                        ) : (
+                                                            <code className={cn("block p-4 rounded-lg bg-muted/50 font-mono text-xs overflow-x-auto border border-border/50", className)}>{children}</code>
+                                                        );
+                                                    },
+                                                    pre: ({ children }) => <pre className="mb-4">{children}</pre>,
+                                                    strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                                                }}
+                                            >
+                                                {message.content}
+                                            </ReactMarkdown>
+                                            {isThisMessageGenerating && (
+                                                <span className="inline-block w-2 h-4 bg-foreground/50 animate-pulse ml-0.5" />
+                                            )}
+                                        </div>
                                     )}
                                 </div>
-                            )}
-                        </div>
-                    ))}
+                            </div>
+                        );
+                    })}
 
                     {/* Thinking indicator - show when generating but no assistant message yet */}
                     {isGenerating && (messages.length === 0 || messages[messages.length - 1]?.role === 'user') && (
-                        <div className="animate-fade-in">
-                            <div className="text-sm text-muted-foreground italic flex items-center gap-2">
-                                <span className="inline-block w-2 h-2 rounded-full bg-foreground/30 animate-pulse" />
-                                {thinkingPhrase}
-                            </div>
-                        </div>
+                        <ThinkingProgress
+                            userPrompt={messages.length > 0 ? messages[messages.length - 1]?.content || '' : ''}
+                        />
                     )}
 
                     <div ref={messagesEndRef} />
