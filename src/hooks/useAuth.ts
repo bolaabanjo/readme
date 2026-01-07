@@ -12,13 +12,15 @@ export function useAuth() {
     useEffect(() => {
         // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
+            console.log('[useAuth] Initial session:', session?.user?.email || 'none');
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
         });
 
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        // Listen for auth changes (including OAuth redirect)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log('[useAuth] Auth state changed:', event, session?.user?.email || 'none');
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);

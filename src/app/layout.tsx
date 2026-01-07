@@ -13,11 +13,11 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "README.wtf - AI-Powered README Generator",
+  title: "Repokeet - AI-Powered README Generator",
   description: "Paste a GitHub URL. Get a README that doesn't suck. AI that actually reads your code.",
   keywords: ["README", "GitHub", "AI", "documentation", "developer tools"],
   openGraph: {
-    title: "README.wtf - AI-Powered README Generator",
+    title: "Repokeet - AI-Powered README Generator",
     description: "Paste a GitHub URL. Get a README that doesn't suck.",
     type: "website",
   },

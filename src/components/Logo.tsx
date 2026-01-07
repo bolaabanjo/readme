@@ -32,7 +32,7 @@ export function Logo({ className, width = 120, height = 32 }: LogoProps) {
         <div className={cn('relative', className)} style={{ width, height }}>
             <Image
                 src={logoSrc}
-                alt="README.wtf"
+                alt="Repokeet"
                 fill
                 className="object-contain object-left"
                 priority

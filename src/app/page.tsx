@@ -60,10 +60,10 @@ export default function Home() {
         <div className="max-w-lg w-full text-center space-y-6">
           <div className="space-y-3">
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
-              Generate a README that doesn&apos;t suck.
+              Chat with any codebase.
             </h1>
             <p className="text-sm text-muted-foreground">
-              Paste a GitHub URL. AI reads your code and creates documentation.
+              Paste a GitHub URL. AI analyzes your code and answers any question.
             </p>
           </div>
 
@@ -127,10 +127,12 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full px-6 py-4 border-t border-border/50">
+      <footer className="w-full px-6 py-4">
         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-          <span>README.wtf</span>
-          <span>Free · Built on <a href="https://cencori.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">Cencori</a></span>
+          <span>Repokeet</span>
+          <span>
+            Free · <a href="https://github.com/bolaabanjo/repokeet" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">GitHub</a> · Built on <a href="https://cencori.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">Cencori</a>
+          </span>
         </div>
       </footer>
     </div>

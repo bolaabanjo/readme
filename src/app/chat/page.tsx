@@ -8,6 +8,7 @@ import { generateId } from '@/lib/utils';
 import { buildInitialMessage } from '@/lib/prompts';
 import ChatInterface from '@/components/ChatInterface';
 import Sidebar from '@/components/Sidebar';
+import ExplorationUI from '@/components/ExplorationUI';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 
@@ -26,6 +27,7 @@ function ChatPageContent() {
     const [error, setError] = useState('');
     const [analysisInfo, setAnalysisInfo] = useState<{ owner: string; repo: string; fileCount?: number; keyFiles?: string[]; hasPackageJson?: boolean } | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [showExploration, setShowExploration] = useState(false);
 
     // Analyze repo on mount
     useEffect(() => {
@@ -96,26 +98,9 @@ function ChatPageContent() {
 
                 // Only perform initial setup if it's a new chat
                 if (!chatIdFromUrl) {
-                    const initialAssistantMessage: ChatMessage = {
-                        id: generateId(),
-                        role: 'assistant',
-                        content: buildInitialMessage(data.data),
-                        timestamp: new Date(),
-                    };
-
-                    const firstUserMessage: ChatMessage = {
-                        id: generateId(),
-                        role: 'user',
-                        content: 'Generate a README for this repository.',
-                        timestamp: new Date(),
-                    };
-
-                    const initialMessages = [initialAssistantMessage, firstUserMessage];
-                    setMessages(initialMessages);
+                    // Show exploration UI instead of auto-generating
+                    setShowExploration(true);
                     setIsAnalyzing(false);
-
-                    // Send initial message to AI
-                    sendMessageToAI(data.data, initialMessages);
                 } else {
                     setIsAnalyzing(false);
                 }
@@ -251,6 +236,9 @@ function ChatPageContent() {
     const handleSendMessage = async (content: string) => {
         if (!repoContext || isGenerating) return;
 
+        // Hide exploration UI when user sends a message
+        setShowExploration(false);
+
         const userMessage: ChatMessage = {
             id: generateId(),
             role: 'user',
@@ -262,6 +250,14 @@ function ChatPageContent() {
         setMessages(newMessages);
 
         await sendMessageToAI(repoContext, newMessages);
+    };
+
+    const handleExplorationPrompt = (prompt: string) => {
+        handleSendMessage(prompt);
+    };
+
+    const handleSwitchRepo = () => {
+        router.push('/');
     };
 
     if (error && !repoContext) {
@@ -317,15 +313,24 @@ function ChatPageContent() {
                     </div>
                 </header>
 
-                {/* Chat */}
+                {/* Chat or Exploration */}
                 <div className="flex-1 flex flex-col min-h-0">
-                    <ChatInterface
-                        messages={messages}
-                        onSendMessage={handleSendMessage}
-                        isGenerating={isGenerating}
-                        isAnalyzing={isAnalyzing}
-                        analysisInfo={analysisInfo || undefined}
-                    />
+                    {showExploration && analysisInfo && !isAnalyzing ? (
+                        <ExplorationUI
+                            owner={analysisInfo.owner}
+                            repo={analysisInfo.repo}
+                            onSelectPrompt={handleExplorationPrompt}
+                            onSwitchRepo={handleSwitchRepo}
+                        />
+                    ) : (
+                        <ChatInterface
+                            messages={messages}
+                            onSendMessage={handleSendMessage}
+                            isGenerating={isGenerating}
+                            isAnalyzing={isAnalyzing}
+                            analysisInfo={analysisInfo || undefined}
+                        />
+                    )}
                 </div>
             </div>
         </div>

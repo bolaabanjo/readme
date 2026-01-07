@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { Plus, MessageSquare, User, LogIn, X, PanelLeftClose, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from './ThemeToggle';
@@ -217,10 +218,22 @@ export default function Sidebar({ isOpen, onToggle, currentRepoName }: SidebarPr
                             className="flex-1 flex items-center gap-3 px-4 py-3 text-sm rounded-xl hover:bg-white/5 transition-colors overflow-hidden group"
                             title="Sign out"
                         >
-                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-white/20 transition-colors">
-                                <User className="w-4 h-4" />
-                            </div>
-                            <span className="truncate text-sm">{user?.email?.split('@')[0]}</span>
+                            {user?.user_metadata?.avatar_url ? (
+                                <Image
+                                    src={user.user_metadata.avatar_url}
+                                    alt="Avatar"
+                                    width={32}
+                                    height={32}
+                                    className="rounded-full flex-shrink-0"
+                                />
+                            ) : (
+                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-white/20 transition-colors">
+                                    <User className="w-4 h-4" />
+                                </div>
+                            )}
+                            <span className="truncate text-sm">
+                                {user?.user_metadata?.full_name || user?.user_metadata?.user_name || user?.email?.split('@')[0]}
+                            </span>
                         </button>
                     ) : (
                         <button
