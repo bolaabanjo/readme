@@ -1,145 +1,120 @@
 # Troubleshooting Guide
 
-## Summary
-
-During the development of README.wtf, several issues were encountered, primarily related to Cencori SDK integration and streaming response handling.
+Common issues when building with the Cencori SDK and their solutions.
 
 ---
 
-## Issues Encountered
+## 1. Streaming Returns Empty Response
 
-### 1. Cencori SDK Streaming - Incorrect `await` Usage
+**Symptom:** API returns 200, but response body is empty. UI shows loading state indefinitely.
 
-**Problem:** Initial implementation used `await` with `chatStream()`:
-```typescript
-const stream = await cencori.ai.chatStream({ ... });
-```
+**Cause:** Stream errors are returned as chunks with an `error` property, not thrown exceptions.
 
-**Error:** TypeScript error - `AsyncGenerator<StreamChunk>` not assignable to `BodyInit`.
-
-**Solution:** Per Cencori docs, `chatStream()` returns an AsyncGenerator directly (no await):
-```typescript
-const stream = cencori.ai.chatStream({ ... });
-```
-
----
-
-### 2. StreamChunk Property Name Mismatch
-
-**Problem:** Initially accessed `chunk.content` for streamed text.
-
-**Error:** `Property 'content' does not exist on type 'StreamChunk'`
-
-**Root Cause:** The SDK types show `StreamChunk` has `delta`, not `content`:
-```typescript
-interface StreamChunk {
-  delta: string;
-  finish_reason?: 'stop' | 'length' | 'content_filter' | 'error';
-}
-```
-
-**Solution:** Changed to `chunk.delta`:
+**Solution:** Always check for error chunks when streaming:
 ```typescript
 for await (const chunk of stream) {
+  if (chunk.error) {
+    console.error('Stream error:', chunk.error);
+    // Handle error (show to user, retry, etc.)
+    break;
+  }
   controller.enqueue(encoder.encode(chunk.delta));
 }
 ```
 
 ---
 
-### 3. Silent Errors in Stream - Rate Limiting
+## 2. Rate Limit Errors
 
-**Problem:** After fixing the above, the API returned 200 but the response body was empty. The UI showed "Generating your README now..." but no content ever appeared.
+**Symptom:** `chunk.error` contains `"[google] Rate limit exceeded."` or similar.
 
-**Diagnosis:** Added logging and discovered Cencori was returning error chunks instead of content:
-```
-[Chat API] Chunk 1: {"error":"[google] Rate limit exceeded."}
-```
+**Cause:** The underlying provider (Google, OpenAI, etc.) has rate limited requests.
 
-**Root Cause:** The `gemini-2.0-flash` model was rate limited, and the SDK returns errors as stream chunks with an `error` property (not typed in `StreamChunk`).
+**Solutions:**
+1. Switch to a different model: `gemini-2.5-flash` → `gpt-4o`
+2. Enable fallback in Cencori dashboard (Settings → Infrastructure)
+3. Implement exponential backoff on retries
 
-**Solution:** 
-1. Added error detection in stream handling:
+---
+
+## 3. TypeScript: chatStream() Type Errors
+
+**Symptom:** `AsyncGenerator<StreamChunk>` not assignable to `BodyInit`
+
+**Cause:** Using `await` with `chatStream()` incorrectly.
+
+**Solution:** `chatStream()` returns an AsyncGenerator directly (no await):
 ```typescript
-const chunkAny = chunk as unknown as Record<string, unknown>;
-if (chunkAny.error) {
-  console.error('[Chat API] Cencori error:', chunkAny.error);
-  controller.enqueue(encoder.encode(`⚠️ Error: ${chunkAny.error}`));
-  controller.close();
-  return;
+// ❌ Wrong
+const stream = await cencori.ai.chatStream({ ... });
+
+// ✅ Correct
+const stream = cencori.ai.chatStream({ ... });
+```
+
+---
+
+## 4. GitHub API Rate Limits
+
+**Symptom:** `"Request quota exhausted"` errors when analyzing repos.
+
+**Cause:** Unauthenticated GitHub API requests are limited to 60/hour.
+
+**Solutions:**
+1. Add `GITHUB_TOKEN` to `.env.local` for 5000 req/hour
+2. Cache repo analysis results
+3. Reduce number of files fetched per repo
+
+---
+
+## 5. StreamChunk Format Reference
+
+From [Cencori docs](https://cencori.com/docs):
+
+```typescript
+interface StreamChunk {
+  delta: string;                    // The text chunk
+  finish_reason?: 'stop' | 'length' | 'content_filter' | 'error';
+  error?: string;                   // Error message if stream failed
 }
 ```
 
-2. Switched to `gemini-2.5-flash` (recommended default per Cencori docs):
-```typescript
-export const AI_MODEL = 'gemini-2.5-flash';
-```
-
 ---
 
-### 4. Frontend Message State Issue
-
-**Problem:** Even when the API worked, the generated README wasn't appearing in the UI.
-
-**Root Cause:** The chat page was calling `generateReadme(data.data, [], style)` with an empty messages array, then filtering for only `user` role messages. No user message was ever sent to the API.
-
-**Solution:** Added explicit user message before calling generateReadme:
-```typescript
-const userMessage: ChatMessage = {
-  id: generateId(),
-  role: 'user',
-  content: 'Generate a README for this repository.',
-  timestamp: new Date(),
-};
-const initialMessages = [initialMessage, userMessage];
-setMessages(initialMessages);
-generateReadme(data.data, initialMessages, style);
-```
-
----
-
-## Recommendations for Cencori SDK
-
-1. **Type error responses:** The `StreamChunk` type should include optional `error` property for proper TypeScript handling.
-
-2. **Document error handling:** The streaming docs should show how to handle error chunks.
-
-3. **Rate limit visibility:** Consider throwing a typed `RateLimitError` instead of returning it as a stream chunk.
-
----
-
-## Final Working Implementation
+## Full Working Streaming Example
 
 ```typescript
-// lib/cencori.ts
 import { Cencori } from 'cencori';
 
-export const cencori = new Cencori({
-  apiKey: process.env.CENCORI_API_KEY!,
-});
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+  
+  const cencori = new Cencori({
+    apiKey: process.env.CENCORI_API_KEY!,
+  });
 
-export const AI_MODEL = 'gemini-2.5-flash';
+  const stream = cencori.ai.chatStream({
+    model: 'gemini-2.5-flash',
+    messages,
+  });
 
-// api/chat/route.ts
-const stream = cencori.ai.chatStream({
-  model: AI_MODEL,
-  messages: formattedMessages,
-});
-
-const readableStream = new ReadableStream({
-  async start(controller) {
-    for await (const chunk of stream) {
-      const chunkAny = chunk as unknown as Record<string, unknown>;
-      if (chunkAny.error) {
-        controller.enqueue(encoder.encode(`⚠️ Error: ${chunkAny.error}`));
-        controller.close();
-        return;
-      }
-      if (chunk.delta) {
+  const encoder = new TextEncoder();
+  const readableStream = new ReadableStream({
+    async start(controller) {
+      for await (const chunk of stream) {
+        if (chunk.error) {
+          controller.enqueue(encoder.encode(`Error: ${chunk.error}`));
+          controller.close();
+          return;
+        }
         controller.enqueue(encoder.encode(chunk.delta));
       }
-    }
-    controller.close();
-  },
-});
+      controller.close();
+    },
+  });
+
+  return new Response(readableStream, {
+    headers: { 'Content-Type': 'text/event-stream' },
+  });
+}
 ```
