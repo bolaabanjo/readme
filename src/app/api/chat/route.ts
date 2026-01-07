@@ -2,8 +2,10 @@ import { cencori, AI_MODEL } from '@/lib/cencori';
 import { buildSystemPrompt } from '@/lib/prompts';
 import type { ChatRequest } from '@/types';
 
-// Use Edge runtime for streaming support in production
-export const runtime = 'edge';
+// Use Node.js runtime with streaming enabled for production
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Allow up to 60 seconds for streaming
 
 export async function POST(request: Request) {
     try {
