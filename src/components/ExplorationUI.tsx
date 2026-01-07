@@ -26,11 +26,11 @@ export default function ExplorationUI({
     onSwitchRepo,
 }: ExplorationUIProps) {
     return (
-        <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
-            <div className="max-w-xl w-full text-center space-y-8">
+        <div className="flex flex-col items-center justify-center py-8">
+            <div className="max-w-xl w-full text-center space-y-6">
                 {/* Header */}
                 <div className="space-y-4">
-                    <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+                    <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">
                         Let&apos;s explore
                     </h1>
 

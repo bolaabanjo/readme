@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import type { ChatMessage } from '@/types';
 import { cn } from '@/lib/utils';
 import AnalysisProgress from './AnalysisProgress';
+import ExplorationUI from './ExplorationUI';
 
 interface ChatInterfaceProps {
     messages: ChatMessage[];
@@ -19,6 +20,13 @@ interface ChatInterfaceProps {
         keyFiles?: string[];
         hasPackageJson?: boolean;
     };
+    showExploration?: boolean;
+    explorationProps?: {
+        owner: string;
+        repo: string;
+        onSelectPrompt: (prompt: string) => void;
+        onSwitchRepo: () => void;
+    };
 }
 
 export default function ChatInterface({
@@ -27,6 +35,8 @@ export default function ChatInterface({
     isGenerating,
     isAnalyzing = false,
     analysisInfo,
+    showExploration = false,
+    explorationProps,
 }: ChatInterfaceProps) {
     const [input, setInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -55,8 +65,8 @@ export default function ChatInterface({
             {/* Scrollable Messages Area */}
             <div className="flex-1 overflow-y-auto min-h-0">
                 <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
-                    {/* Analysis progress */}
-                    {analysisInfo && (
+                    {/* Analysis progress - only show when analyzing or when there are messages */}
+                    {analysisInfo && (!showExploration || messages.length > 0) && (
                         <AnalysisProgress
                             repoOwner={analysisInfo.owner}
                             repoName={analysisInfo.repo}
@@ -65,6 +75,11 @@ export default function ChatInterface({
                             keyFiles={analysisInfo.keyFiles}
                             hasPackageJson={analysisInfo.hasPackageJson}
                         />
+                    )}
+
+                    {/* Exploration UI */}
+                    {showExploration && explorationProps && (
+                        <ExplorationUI {...explorationProps} />
                     )}
 
                     {/* Messages */}

@@ -315,22 +315,20 @@ function ChatPageContent() {
 
                 {/* Chat or Exploration */}
                 <div className="flex-1 flex flex-col min-h-0">
-                    {showExploration && analysisInfo && !isAnalyzing ? (
-                        <ExplorationUI
-                            owner={analysisInfo.owner}
-                            repo={analysisInfo.repo}
-                            onSelectPrompt={handleExplorationPrompt}
-                            onSwitchRepo={handleSwitchRepo}
-                        />
-                    ) : (
-                        <ChatInterface
-                            messages={messages}
-                            onSendMessage={handleSendMessage}
-                            isGenerating={isGenerating}
-                            isAnalyzing={isAnalyzing}
-                            analysisInfo={analysisInfo || undefined}
-                        />
-                    )}
+                    <ChatInterface
+                        messages={messages}
+                        onSendMessage={handleSendMessage}
+                        isGenerating={isGenerating}
+                        isAnalyzing={isAnalyzing}
+                        analysisInfo={analysisInfo || undefined}
+                        showExploration={showExploration && !isAnalyzing && messages.length === 0}
+                        explorationProps={analysisInfo ? {
+                            owner: analysisInfo.owner,
+                            repo: analysisInfo.repo,
+                            onSelectPrompt: handleExplorationPrompt,
+                            onSwitchRepo: handleSwitchRepo,
+                        } : undefined}
+                    />
                 </div>
             </div>
         </div>
