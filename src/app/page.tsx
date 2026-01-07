@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { isValidGitHubUrl } from '@/lib/utils';
+import { Logo } from '@/components/Logo';
 
 export default function Home() {
   const [repoUrl, setRepoUrl] = useState('');
@@ -35,16 +36,16 @@ export default function Home() {
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="w-full px-6 py-4 flex items-center justify-between">
-        <span className="text-sm font-semibold">README.wtf</span>
+        <Logo width={120} height={32} />
         <a
           href="https://github.com"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 h-8 px-3 text-xs rounded-full border border-border/50 hover:border-border transition-colors group"
         >
-          <div className="relative w-3.5 h-3.5">
+          <div className="relative w-3.5 h-3.5 dark:invert">
             <Image
-              src="/github-mark-white.png"
+              src="/github-mark.png"
               alt="GitHub"
               fill
               className="object-contain"
@@ -68,10 +69,10 @@ export default function Home() {
 
           {/* Input */}
           <form onSubmit={handleSubmit} className="w-full space-y-3">
-            <div className="flex items-center gap-2 rounded-full border border-border/50 bg-white/5 p-1.5 pl-5 shadow-inner transition-colors focus-within:border-border/80 focus-within:bg-white/10">
-              <div className="relative w-5 h-5 flex-shrink-0 opacity-50">
+            <div className="flex items-center gap-2 rounded-full border border-border/50 bg-muted/30 p-1.5 pl-5 shadow-inner transition-colors focus-within:border-border/80 focus-within:bg-muted/50">
+              <div className="relative w-5 h-5 flex-shrink-0 opacity-50 dark:invert">
                 <Image
-                  src="/github-mark-white.png"
+                  src="/github-mark.png"
                   alt="GitHub"
                   fill
                   className="object-contain"
@@ -91,7 +92,7 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex-shrink-0 h-9 w-9 flex items-center justify-center bg-white text-black rounded-full hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="flex-shrink-0 h-9 w-9 flex items-center justify-center bg-foreground text-background rounded-full hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {isLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />

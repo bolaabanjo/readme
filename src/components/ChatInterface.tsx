@@ -77,7 +77,7 @@ export default function ChatInterface({
                             )}
                         >
                             {message.role === 'user' ? (
-                                <div className="inline-block px-4 py-2.5 text-sm rounded-2xl bg-white/10 border border-white/10">
+                                <div className="inline-block px-4 py-2.5 text-sm rounded-2xl bg-muted border border-border">
                                     {message.content}
                                 </div>
                             ) : (
@@ -94,9 +94,9 @@ export default function ChatInterface({
                                             code: ({ className, children }) => {
                                                 const isInline = !className;
                                                 return isInline ? (
-                                                    <code className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-xs">{children}</code>
+                                                    <code className="px-1.5 py-0.5 rounded bg-muted font-mono text-xs">{children}</code>
                                                 ) : (
-                                                    <code className={cn("block p-4 rounded-lg bg-white/5 font-mono text-xs overflow-x-auto", className)}>{children}</code>
+                                                    <code className={cn("block p-4 rounded-lg bg-muted/50 font-mono text-xs overflow-x-auto border border-border/50", className)}>{children}</code>
                                                 );
                                             },
                                             pre: ({ children }) => <pre className="mb-4">{children}</pre>,
@@ -120,7 +120,7 @@ export default function ChatInterface({
             <div className="flex-shrink-0 px-6 pb-6 pt-4">
                 <div className="max-w-4xl mx-auto">
                     <form onSubmit={handleSubmit}>
-                        <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2">
+                        <div className="flex items-center gap-3 rounded-full border border-border bg-muted/30 px-5 py-2 focus-within:bg-muted/50 transition-colors">
                             <input
                                 ref={inputRef}
                                 type="text"
@@ -134,7 +134,7 @@ export default function ChatInterface({
                             <button
                                 type="submit"
                                 disabled={!input.trim() || isGenerating || isAnalyzing}
-                                className="flex-shrink-0 h-9 w-9 flex items-center justify-center bg-white text-black rounded-full hover:opacity-90 transition-opacity disabled:opacity-30"
+                                className="flex-shrink-0 h-9 w-9 flex items-center justify-center bg-foreground text-background rounded-full hover:opacity-90 transition-opacity disabled:opacity-30"
                             >
                                 <ArrowUp className="w-4 h-4" />
                             </button>

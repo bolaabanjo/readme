@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, MessageSquare, User, LogIn, X, PanelLeftClose } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from './ThemeToggle';
+import { Logo } from './Logo';
 
 interface ChatHistoryItem {
     id: string;
@@ -51,7 +53,7 @@ export default function Sidebar({ isOpen, onToggle, currentRepoName }: SidebarPr
             )}>
                 {/* Logo & Toggle */}
                 <div className="flex items-center justify-between px-5 py-5 min-w-[256px]">
-                    <span className="font-medium text-sm">README.wtf</span>
+                    <Logo width={100} height={28} />
                     <div className="flex items-center gap-1">
                         <button
                             onClick={onToggle}
@@ -121,20 +123,21 @@ export default function Sidebar({ isOpen, onToggle, currentRepoName }: SidebarPr
                 </div>
 
                 {/* Auth Section */}
-                <div className="p-3">
+                <div className="p-3 flex items-center gap-2">
                     {isSignedIn ? (
-                        <button className="w-full flex items-center gap-3 px-4 py-3 text-sm rounded-xl hover:bg-white/5 transition-colors">
-                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                        <button className="flex-1 flex items-center gap-3 px-4 py-3 text-sm rounded-xl hover:bg-white/5 transition-colors overflow-hidden">
+                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
                                 <User className="w-4 h-4" />
                             </div>
                             <span className="truncate text-sm">user@example.com</span>
                         </button>
                     ) : (
-                        <button className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm rounded-xl bg-white/10 hover:bg-white/15 transition-colors border border-white/10">
+                        <button className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm rounded-xl bg-white/10 hover:bg-white/15 transition-colors border border-white/10">
                             <LogIn className="w-4 h-4" />
                             Sign in
                         </button>
                     )}
+                    <ThemeToggle />
                 </div>
             </aside>
         </>
